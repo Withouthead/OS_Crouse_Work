@@ -143,7 +143,7 @@ inode* dirlookup(inode *dp, char *name)
         for(int i = 0; i < dp->size; i += sizeof(de))
         {
             readi(dp, (uint64_t)&de, i, sizeof(de));
-            if(strcmp(de.name, name))
+            if(strcmp(de.name, name) == 0)
             {
                 dp = get_inode(de.inum);
             }
