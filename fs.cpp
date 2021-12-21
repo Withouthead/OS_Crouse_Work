@@ -148,6 +148,10 @@ inode* dirlookup(inode *dp, char *name)
                 dp = get_inode(de.inum);
             }
         }
+        if(strcmp(de.name, name) != 0)
+        {
+            return NULL;
+        }
         p = strtok(name, "/");
     }
     return dp;
