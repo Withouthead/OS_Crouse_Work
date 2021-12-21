@@ -20,17 +20,14 @@ inode* find_free_inode()
 {
 
     int inode_size = sizeof(inode);
-    for(int i = INODE_START; i < DATA_START; i += BLOCK_SIZE)
+    for(int i = INODE_START; i < DATA_START; i += inode_size)
     {
-        for(int j = 0; j < BLOCK_SIZE; j += inode_size)
-        {
-            uint64_t addr = get_real_addr(i + j);
-            inode *temp = (inode *)addr;
-            if(temp->type == 0) {
-                memset(temp, 0, sizeof(&temp));
-                temp->inum = (i - INODE_START) / BLOCK_SIZE + j;
-                return temp;
-            }
+        uint64_t addr = get_real_addr(i);
+        inode *temp = (inode *) addr;
+        if (temp->type == 0) {
+            memset(temp, 0, sizeof(&temp));
+            temp->inum = (i - INODE_START) / inode_size;
+            return temp;
         }
     }
     throw "There are no free inode!";
@@ -92,7 +89,7 @@ uint64_t bmap(inode *ip, uint bn)
 }
 inode *get_inode(ushort inum)
 {
-    return (inode *)get_real_addr((INODE_START * BLOCK_SIZE) + inum);
+    return (inode *)get_real_addr(inum * sizeof(inode) + INODE_START);
 }
 int readi(inode *ip, uint64_t dst,uint off, uint n)
 {
