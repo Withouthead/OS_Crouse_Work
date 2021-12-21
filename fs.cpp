@@ -123,11 +123,14 @@ int writei(inode *ip, uint64_t src, uint off, uint n)
         ip->size = off;
     return tot;
 }
-inode* dirlookup(inode *dp, char *name, int create_new=0)
+inode* dirlookup(inode *dp, char *name, int create_new=0, int parent=0)
 {
     assert(dp && dp->type == T_DIR);
     dirent de{};
-    char *p = strtok(name, "/");
+    char name_back_up[2048];
+    strcpy(name_back_up, name);
+    char *p = strtok(name_back_up, "/");
+    inode *p_dp = NULL;
     while(p != NULL)
     {
         bzero(&de, sizeof(de));
@@ -136,6 +139,7 @@ inode* dirlookup(inode *dp, char *name, int create_new=0)
             readi(dp, (uint64_t)&de, i, sizeof(de));
             if(strcmp(de.name, p) == 0)
             {
+                p_dp = dp;
                 dp = get_inode(de.inum);
                 break;
             }
@@ -151,11 +155,14 @@ inode* dirlookup(inode *dp, char *name, int create_new=0)
                 strcpy(new_de.name, p);
                 new_de.inum = new_node->inum;
                 writei(dp, (uint64_t)&new_de, dp->size, sizeof(new_de));
+                p_dp = dp;
                 dp = new_node;
             }
         }
         p = strtok(NULL, "/");
     }
+    if(parent == 1)
+        dp = p_dp;
     return dp;
 }
 
@@ -168,11 +175,13 @@ int bfree(uint va)//va是虚拟地址而不是真实地址
     bzero((void *)get_real_addr(va), BLOCK_SIZE);
     return 1;
 }
-int ifree(ushort inum)
+int ifree(inode *node)
 {
-    inode *node = get_inode(inum);
-    if(node->nlink > 0)
+    if(node->nlink > 1) {
+        node->nlink --;
         return 1;
+    }
+    node->nlink = 0;
     node->size = 0;
     node->type = 0;
     for(int i = 0; i < NDIRECT; i++)
@@ -181,7 +190,7 @@ int ifree(ushort inum)
             bfree(node->addrs[i]);
         node->addrs[i] = 0;
     }
-    for(int i = NDIRECT; i < NINDIRECT; i++)
+    for(int i = NDIRECT; i < NDIRECT + NINDIRECT; i++)
     {
         if(node->addrs[i] != 0)
         {
@@ -201,3 +210,48 @@ int ifree(ushort inum)
     }
     return 1;
 }
+
+void remove_file(char *name) {
+    inode *zero_dp = get_inode(0);
+    inode *p_dp = dirlookup(zero_dp, name, 0, 1);
+    if (p_dp == NULL)
+        return;
+    inode *ip = dirlookup(zero_dp, name, 0, 0);
+    if (ip == NULL)
+        return;
+
+
+    dirent de{};
+    int offset = sizeof(de);
+    if (ip->type == T_DIR && ip->size > 0) {
+        for (int i = 0; i < ip->size; i += offset) {
+            readi(ip, (uint64_t) &de, i, offset);
+            if (strlen(de.name) > 0) {
+                char path[2048];
+                bzero(path, sizeof(path));
+                strcpy(path, name);
+                path[strlen(path)] = '/';
+                strcat(path, de.name);
+                remove_file(path);
+                i = i - offset;
+            }
+        }
+    }
+
+    int flag = 0;
+    for (int i = 0; i < p_dp->size; i += offset) {
+        readi(p_dp, (uint64_t) &de, i, offset);
+        if (de.inum == ip->inum) {
+            bzero(&de, sizeof(de));
+            writei(ip, (uint64_t) &de, i, offset);
+            flag = 1;
+            continue;
+        }
+        if (flag == 1) {
+            writei(ip, (uint64_t) &de, i - offset, offset);
+        }
+    }
+    p_dp->size -= offset;
+    ifree(ip);
+};
+

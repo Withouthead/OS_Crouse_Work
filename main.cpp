@@ -34,6 +34,11 @@ int main() {
             p = strtok(NULL, " ");
             mkdir(p);
         }
+        else if(strcmp(p, "rm") == 0)
+        {
+            p = strtok(NULL, " ");
+            rm(p);
+        }
         else
             printf("There is no command named %s\n", command);
     }

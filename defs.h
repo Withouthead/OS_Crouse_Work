@@ -32,10 +32,13 @@ inode* ialloc(char type);
 int readi(inode *ip, uint64_t dst, uint off, uint n);
 int writei(inode *ip, uint64_t src, uint off, uint n);
 inode *get_inode(ushort inum);
-inode* dirlookup(inode *dp, char *name, int create_new);
+inode* dirlookup(inode *dp, char *name, int create_new, int parent);
+void remove_file(char *name);
 
 //utils.cpp
 void ls(char *path);
 void mkdir(char *path);
 void cd(char *path);
+void rm(char *path);
+
 #endif //OS_CROUSE_WORK_DEFS_H
