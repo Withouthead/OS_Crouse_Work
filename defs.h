@@ -6,21 +6,22 @@
 #define OS_CROUSE_WORK_DEFS_H
 
 
-
+#include "inode.h"
+#include <cstdlib>
+#include <sys/types.h>
+#include <iostream>
 #define VIRDISK_SIZE 1024 * 1024 * 20
 #define BLOCK_SIZE 1024
 #define DMAP_START (BLOCK_SIZE)
 #define INODE_START (BLOCK_SIZE * 2)
 #define DATA_START (BLOCK_SIZE * 22)
-#define NDIRECT 12
-#define NINDIRECT 1
-#define DIRSIZE 14
+
 
 #define T_DIR 1
 #define T_FILE 2
 
 extern uint64_t vir_start_ad;
-struct inode;
+extern char c_path[2048];
 //init.cpp
 uint64_t init();
 
@@ -29,5 +30,6 @@ uint64_t init();
 inode* ialloc(char type);
 int readi(inode *ip, uint64_t dst, uint off, uint n);
 int writei(inode *ip, uint64_t src, uint off, uint n);
-inode *get_inode(int inum);
+inode *get_inode(ushort inum);
+inode* dirlookup(inode *dp, char *name, int create_new);
 #endif //OS_CROUSE_WORK_DEFS_H

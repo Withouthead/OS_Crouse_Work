@@ -5,10 +5,5 @@
 #include "defs.h"
 int main() {
     init();
-    inode *ip = get_inode(0);
-    char temp[10];
-    bzero(temp, sizeof(temp));
-    readi(ip, (uint64_t)temp, 0, FILENAME_MAX);
-    std::cout << temp;
-
+    bzero((void *)vir_start_ad, VIRDISK_SIZE);
 }

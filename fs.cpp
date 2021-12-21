@@ -6,21 +6,10 @@
 #include <cstring>
 #include <cassert>
 #include "defs.h"
+#include "inode.h"
 
 //extern uint64_t vir_start_ad;
-struct dirent
-{
-    ushort inum;
-    char name[DIRSIZE];
-};
 
-struct inode //64B
-{
-    char type;
-    int nlink;
-    int size;
-    uint addrs[NDIRECT + NINDIRECT];
-};
 
 uint64_t get_real_addr(uint va)
 {
@@ -39,6 +28,7 @@ inode* find_free_inode()
             inode *temp = (inode *)addr;
             if(temp->type == 0) {
                 memset(temp, 0, sizeof(&temp));
+                temp->inum = (i - INODE_START) * BLOCK_SIZE + j;
                 return temp;
             }
         }
@@ -104,7 +94,7 @@ inode *get_inode(ushort inum)
 {
     return (inode *)get_real_addr((INODE_START * BLOCK_SIZE) + inum);
 }
-int readi(inode *ip, uint64_t dst, uint off, uint n)
+int readi(inode *ip, uint64_t dst,uint off, uint n)
 {
     uint tot, m;
     assert(!(off > ip->size || off + n < off));
@@ -133,7 +123,7 @@ int writei(inode *ip, uint64_t src, uint off, uint n)
         ip->size = off;
     return tot;
 }
-inode* dirlookup(inode *dp, char *name)
+inode* dirlookup(inode *dp, char *name, int create_new=0)
 {
     assert(dp && dp->type == T_DIR);
     dirent de{};
@@ -143,14 +133,24 @@ inode* dirlookup(inode *dp, char *name)
         for(int i = 0; i < dp->size; i += sizeof(de))
         {
             readi(dp, (uint64_t)&de, i, sizeof(de));
-            if(strcmp(de.name, name) == 0)
+            if(strcmp(de.name, p) == 0)
             {
                 dp = get_inode(de.inum);
             }
         }
-        if(strcmp(de.name, name) != 0)
+        if(strcmp(de.name, p) != 0)
         {
-            return NULL;
+            if(create_new == 0)
+                return NULL;
+            else
+            {
+                inode *new_node = ialloc(T_DIR);
+                dirent new_de{};
+                strcpy(new_de.name, p);
+                new_de.inum = new_node->inum;
+                writei(dp, (uint64_t)&new_node, dp->size, sizeof(new_de));
+                dp = new_node;
+            }
         }
         p = strtok(name, "/");
     }
@@ -199,4 +199,3 @@ int ifree(ushort inum)
     }
     return 1;
 }
-
