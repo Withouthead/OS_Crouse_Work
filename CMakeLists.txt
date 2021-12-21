@@ -3,4 +3,4 @@ project(os_crouse_work)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(os_crouse_work main.cpp init.cpp defs.h fs.cpp)
+add_executable(os_crouse_work main.cpp init.cpp defs.h fs.cpp utils.cpp)

@@ -57,8 +57,8 @@ uint64_t find_free_block()
         if(*b == 0)
         {
             *b = 1;
-            memset((void *)(vir_start_ad + DATA_START + (BLOCK_SIZE * i)), 0, BLOCK_SIZE);
-            return DATA_START + (BLOCK_SIZE * i);
+            memset((void *)(vir_start_ad + (DATA_START * BLOCK_SIZE + (BLOCK_SIZE * i))), 0, BLOCK_SIZE);
+            return DATA_START * BLOCK_SIZE  + (BLOCK_SIZE * i);
         }
     }
     throw "There is no free block!";
@@ -156,3 +156,47 @@ inode* dirlookup(inode *dp, char *name)
     }
     return dp;
 }
+
+int bfree(uint va)//va是虚拟地址而不是真实地址
+{
+    va = (va / BLOCK_SIZE) * BLOCK_SIZE; // round一下
+    uint bnum = (va - DATA_START * BLOCK_SIZE)  / BLOCK_SIZE;
+    char *b = (char *)get_real_addr(DMAP_START + bnum);
+    *b = 0;
+    bzero((void *)get_real_addr(va), BLOCK_SIZE);
+    return 1;
+}
+int ifree(ushort inum)
+{
+    inode *node = get_inode(inum);
+    if(node->nlink > 0)
+        return 1;
+    node->size = 0;
+    node->type = 0;
+    for(int i = 0; i < NDIRECT; i++)
+    {
+        if(node->addrs[i] != 0)
+            bfree(node->addrs[i]);
+        node->addrs[i] = 0;
+    }
+    for(int i = NDIRECT; i < NINDIRECT; i++)
+    {
+        if(node->addrs[i] != 0)
+        {
+            int p_size = sizeof(uint);
+            uint *v_addr = (uint *)get_real_addr(node->addrs[NDIRECT]);
+            for(int k = 0; k < BLOCK_SIZE / p_size; k += p_size)
+            {
+                if(v_addr[k] != 0)
+                {
+                    bfree(v_addr[k]);
+                    v_addr[k] = 0;
+                }
+            }
+            bfree(node->addrs[i]);
+            node->addrs[i] = 0;
+        }
+    }
+    return 1;
+}
+
