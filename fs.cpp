@@ -130,6 +130,7 @@ inode* dirlookup(inode *dp, char *name, int create_new=0)
     char *p = strtok(name, "/");
     while(p != NULL)
     {
+        bzero(&de, sizeof(de));
         for(int i = 0; i < dp->size; i += sizeof(de))
         {
             readi(dp, (uint64_t)&de, i, sizeof(de));
@@ -160,8 +161,8 @@ inode* dirlookup(inode *dp, char *name, int create_new=0)
 
 int bfree(uint va)//va是虚拟地址而不是真实地址
 {
-    va = (va / BLOCK_SIZE) * BLOCK_SIZE; // round一下
-    uint bnum = (va - DATA_START * BLOCK_SIZE)  / BLOCK_SIZE;
+//    va = (va / BLOCK_SIZE) * BLOCK_SIZE; // round一下
+    uint bnum = (va - DATA_START)  / BLOCK_SIZE;
     char *b = (char *)get_real_addr(DMAP_START + bnum);
     *b = 0;
     bzero((void *)get_real_addr(va), BLOCK_SIZE);
