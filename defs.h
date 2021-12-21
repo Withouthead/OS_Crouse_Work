@@ -22,6 +22,7 @@
 
 extern uint64_t vir_start_ad;
 extern char c_path[2048];
+extern char p_path[2048];
 //init.cpp
 uint64_t init();
 
@@ -32,4 +33,9 @@ int readi(inode *ip, uint64_t dst, uint off, uint n);
 int writei(inode *ip, uint64_t src, uint off, uint n);
 inode *get_inode(ushort inum);
 inode* dirlookup(inode *dp, char *name, int create_new);
+
+//utils.cpp
+void ls(char *path);
+void mkdir(char *path);
+void cd(char *path);
 #endif //OS_CROUSE_WORK_DEFS_H

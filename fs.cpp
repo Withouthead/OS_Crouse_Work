@@ -20,15 +20,15 @@ inode* find_free_inode()
 {
 
     int inode_size = sizeof(inode);
-    for(int i = INODE_START; i < DATA_START; i++)
+    for(int i = INODE_START; i < DATA_START; i += BLOCK_SIZE)
     {
         for(int j = 0; j < BLOCK_SIZE; j += inode_size)
         {
-            uint64_t addr = get_real_addr(i * BLOCK_SIZE + j);
+            uint64_t addr = get_real_addr(i + j);
             inode *temp = (inode *)addr;
             if(temp->type == 0) {
                 memset(temp, 0, sizeof(&temp));
-                temp->inum = (i - INODE_START) * BLOCK_SIZE + j;
+                temp->inum = (i - INODE_START) / BLOCK_SIZE + j;
                 return temp;
             }
         }
@@ -47,8 +47,8 @@ uint64_t find_free_block()
         if(*b == 0)
         {
             *b = 1;
-            memset((void *)(vir_start_ad + (DATA_START * BLOCK_SIZE + (BLOCK_SIZE * i))), 0, BLOCK_SIZE);
-            return DATA_START * BLOCK_SIZE  + (BLOCK_SIZE * i);
+            memset((void *)(vir_start_ad + (DATA_START  + (i - DMAP_START) * BLOCK_SIZE)), 0, BLOCK_SIZE);
+            return (DATA_START  + (i - DMAP_START) * BLOCK_SIZE);
         }
     }
     throw "There is no free block!";
@@ -106,17 +106,20 @@ int readi(inode *ip, uint64_t dst,uint off, uint n)
     {
         uint bn = off / BLOCK_SIZE;
         m = std::min(n - tot, BLOCK_SIZE - off % BLOCK_SIZE);
-        memcpy((void *)dst, (void *)(bmap(ip, bn) + off % BLOCK_SIZE), m);
+
+        uint64_t block_ad = bmap(ip, bn);
+        memcpy((void *)dst, (void *)(block_ad + off % BLOCK_SIZE), m);
     }
     return tot;
 }
 int writei(inode *ip, uint64_t src, uint off, uint n)
 {
-    uint tot, m;
+    uint tot = 0, m = 0;
     for(tot = 0; tot < n; tot += m, off += m, src += m)
     {
         uint bn = off / BLOCK_SIZE;
         m = std::min(n - tot, BLOCK_SIZE - off % BLOCK_SIZE);
+//        uint64_t test = bmap(ip, bn);
         memcpy((void *)(bmap(ip, bn) + off % BLOCK_SIZE), (void *)src, m);
     }
     if(off > ip->size)
@@ -136,6 +139,7 @@ inode* dirlookup(inode *dp, char *name, int create_new=0)
             if(strcmp(de.name, p) == 0)
             {
                 dp = get_inode(de.inum);
+                break;
             }
         }
         if(strcmp(de.name, p) != 0)
@@ -148,11 +152,11 @@ inode* dirlookup(inode *dp, char *name, int create_new=0)
                 dirent new_de{};
                 strcpy(new_de.name, p);
                 new_de.inum = new_node->inum;
-                writei(dp, (uint64_t)&new_node, dp->size, sizeof(new_de));
+                writei(dp, (uint64_t)&new_de, dp->size, sizeof(new_de));
                 dp = new_node;
             }
         }
-        p = strtok(name, "/");
+        p = strtok(NULL, "/");
     }
     return dp;
 }
