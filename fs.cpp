@@ -100,7 +100,7 @@ uint64_t bmap(inode *ip, uint bn)
     return addr;
 
 }
-inode *get_inode(int inum)
+inode *get_inode(ushort inum)
 {
     return (inode *)get_real_addr((INODE_START * BLOCK_SIZE) + inum);
 }
@@ -137,6 +137,18 @@ inode* dirlookup(inode *dp, char *name)
 {
     assert(dp && dp->type == T_DIR);
     dirent de{};
+    char *p = strtok(name, "/");
+    while(p != NULL)
+    {
+        for(int i = 0; i < dp->size; i += sizeof(de))
+        {
+            readi(dp, (uint64_t)&de, i, sizeof(de));
+            if(strcmp(de.name, name))
+            {
+                dp = get_inode(de.inum);
+            }
+        }
+        p = strtok(name, "/");
+    }
+    return dp;
 }
-
-
