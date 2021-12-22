@@ -58,6 +58,7 @@ void cd(char *path)
     if(dirlookup(zero_inode, r_path, 0, 0) == NULL)
     {
         printf("cd error: %s does not exist\n", r_path);
+        return;
     }
     strcpy(c_path, r_path);
 
@@ -83,6 +84,7 @@ void ls(char *path)
     if(ip == NULL)
     {
         printf("ls error: %s does not exist\n", path);
+        return;
     }
     for(int i = 0; i < ip->size; i += offset)
     {

@@ -27,6 +27,7 @@ inode* find_free_inode()
         if (temp->type == 0) {
             memset(temp, 0, sizeof(&temp));
             temp->inum = (i - INODE_START) / inode_size;
+            printf("分配了第%d个空闲inode\n", temp->inum);
             return temp;
         }
     }
@@ -71,6 +72,7 @@ uint64_t bmap(inode *ip, uint bn)
         if(ip->addrs[bn] == 0)
         {
             ip->addrs[bn] = balloc();
+            printf("分配了第%u个空闲块给第%d个inode\n", ((ip->addrs[bn] - DATA_START) / BLOCK_SIZE), ip->inum);
         }
         addr += ip->addrs[bn];
         return addr;
@@ -78,11 +80,15 @@ uint64_t bmap(inode *ip, uint bn)
     bn -= NDIRECT;
     uint *v_addr;
     assert(bn < BLOCK_SIZE / sizeof(uint));
-    if(ip->addrs[NDIRECT] == 0)
+    if(ip->addrs[NDIRECT] == 0) {
         ip->addrs[NDIRECT] = balloc();
+        printf("分配了第%u个空闲块给第%d个inode\n", ((ip->addrs[NDIRECT] - DATA_START) / BLOCK_SIZE), ip->inum);
+    }
     v_addr = (uint *)get_real_addr(ip->addrs[NDIRECT]);
-    if(v_addr[bn] == 0)
+    if(v_addr[bn] == 0) {
         v_addr[bn] = balloc();
+        printf("分配了第%u个空闲块给第%d个inode\n", ((ip->addrs[v_addr[bn]] - DATA_START) / BLOCK_SIZE), ip->inum);
+    }
     addr = addr + v_addr[bn];
     return addr;
 
@@ -170,6 +176,7 @@ int bfree(uint va)//va是虚拟地址而不是真实地址
 {
 //    va = (va / BLOCK_SIZE) * BLOCK_SIZE; // round一下
     uint bnum = (va - DATA_START)  / BLOCK_SIZE;
+    printf("释放了第%d个磁盘块\n", bnum);
     char *b = (char *)get_real_addr(DMAP_START + bnum);
     *b = 0;
     bzero((void *)get_real_addr(va), BLOCK_SIZE);
@@ -208,6 +215,8 @@ int ifree(inode *node)
             node->addrs[i] = 0;
         }
     }
+    printf("释放了第%d个inode\n", node->inum);
+    node->inum = 0;
     return 1;
 }
 
@@ -243,12 +252,12 @@ void remove_file(char *name) {
         readi(p_dp, (uint64_t) &de, i, offset);
         if (de.inum == ip->inum) {
             bzero(&de, sizeof(de));
-            writei(ip, (uint64_t) &de, i, offset);
+            writei(p_dp, (uint64_t) &de, i, offset);
             flag = 1;
             continue;
         }
         if (flag == 1) {
-            writei(ip, (uint64_t) &de, i - offset, offset);
+            writei(p_dp, (uint64_t) &de, i - offset, offset);
         }
     }
     p_dp->size -= offset;
