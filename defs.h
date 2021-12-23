@@ -7,6 +7,7 @@
 
 
 #include "inode.h"
+#include "superblock.h"
 #include <cstdlib>
 #include <sys/types.h>
 #include <iostream>
@@ -23,6 +24,7 @@
 extern uint64_t vir_start_ad;
 extern char c_path[2048];
 extern char p_path[2048];
+extern superblock *spb;
 //init.cpp
 uint64_t init();
 

@@ -28,6 +28,7 @@ inode* find_free_inode()
             memset(temp, 0, sizeof(&temp));
             temp->inum = (i - INODE_START) / inode_size;
             printf("分配了第%d个空闲inode\n", temp->inum);
+            spb->free_inode_num --;
             return temp;
         }
     }
@@ -38,15 +39,19 @@ inode* find_free_inode()
 
 uint64_t find_free_block()
 {
-    for(int i = DMAP_START; i < INODE_START; i++)
-    {
+    for(int i = DMAP_START; i < INODE_START; i++) {
+        int k_size = sizeof(char) * 8;
         uint64_t addr = get_real_addr(i);
-        char *b = (char *)(addr);
-        if(*b == 0)
-        {
-            *b = 1;
-            memset((void *)(vir_start_ad + (DATA_START  + (i - DMAP_START) * BLOCK_SIZE)), 0, BLOCK_SIZE);
-            return (DATA_START  + (i - DMAP_START) * BLOCK_SIZE);
+        char *b = (char *) (addr);
+        for (int k = 0; k < k_size; k++) {
+
+            char check = 1 << k;
+            if ((*b & check) == 0) {
+                *b |= check;
+                memset((void *) (vir_start_ad + (DATA_START + ((i - DMAP_START) * k_size + k) * BLOCK_SIZE)), 0, BLOCK_SIZE);
+                spb->free_block_num--;
+                return (DATA_START + ((i - DMAP_START) * k_size + k) * BLOCK_SIZE);
+            }
         }
     }
     throw "There is no free block!";
@@ -175,11 +180,13 @@ inode* dirlookup(inode *dp, char *name, int create_new=0, int parent=0)
 int bfree(uint va)//va是虚拟地址而不是真实地址
 {
 //    va = (va / BLOCK_SIZE) * BLOCK_SIZE; // round一下
+    int k_size = sizeof(char) * 8;
     uint bnum = (va - DATA_START)  / BLOCK_SIZE;
     printf("释放了第%d个磁盘块\n", bnum);
-    char *b = (char *)get_real_addr(DMAP_START + bnum);
-    *b = 0;
+    char *b = (char *)get_real_addr(DMAP_START + bnum / k_size);
+    *b &= ~(1 << (bnum % k_size));
     bzero((void *)get_real_addr(va), BLOCK_SIZE);
+    spb->free_block_num ++;
     return 1;
 }
 int ifree(inode *node)
@@ -217,6 +224,7 @@ int ifree(inode *node)
     }
     printf("释放了第%d个inode\n", node->inum);
     node->inum = 0;
+    spb->free_inode_num ++;
     return 1;
 }
 
