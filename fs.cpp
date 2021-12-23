@@ -164,7 +164,7 @@ inode* dirlookup(inode *dp, char *name, int create_new=0, int parent=0, int type
             if(create_new == 0 || type != T_DIR)
             {
                 if(parent)
-                    return p_dp;
+                    return dp;
                 return NULL;
             }
 
@@ -309,7 +309,7 @@ inode *create_new_file(char *path, char *buffer)
     }
     if(file_inode != NULL && file_inode->type == T_FILE)
     {
-        ifree(file_inode);
+        remove_file(path);
         file_inode = NULL;
     }
     if(file_inode == NULL || strcpy(de.name, file_name) != file_name || file_inode->type != T_FILE)
