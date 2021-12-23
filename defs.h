@@ -14,8 +14,9 @@
 #define VIRDISK_SIZE 1024 * 1024 * 20
 #define BLOCK_SIZE 1024
 #define DMAP_START (BLOCK_SIZE)
-#define INODE_START (BLOCK_SIZE * 2)
-#define DATA_START (BLOCK_SIZE * 22)
+#define INODE_START (VIRDISK_SIZE / 8 + 1)
+#define DATA_START (INODE_START + BLOCK_SIZE * 20)
+#define INODE_SIZE 64
 
 
 #define T_DIR 1
@@ -42,5 +43,6 @@ void ls(char *path);
 void mkdir(char *path);
 void cd(char *path);
 void rm(char *path);
+void sysinfo();
 
 #endif //OS_CROUSE_WORK_DEFS_H

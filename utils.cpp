@@ -115,3 +115,14 @@ void rm(char *path)
     process_path(path);
     remove_file(r_path);
 }
+void sysinfo()
+{
+    printf("磁盘总大小:\t%uKB\n", spb->virdis_size);
+    printf("磁盘剩余大小:\t%uKB\n", spb->free_block_num * spb->block_size);
+    printf("块大小:\t%uKB\n", spb->block_size);
+    printf("inode大小:\t%uKB\n", spb->inode_size);
+    printf("块个数:\t%u\n", spb->all_block_num);
+    printf("inode个数:\t%u\n", spb->all_inode_num);
+    printf("剩余块个数:\t%u\n", spb->free_block_num);
+    printf("剩余inode个数:\t%u\n", spb->free_inode_num);
+}
