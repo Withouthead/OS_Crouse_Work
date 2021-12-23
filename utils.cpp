@@ -11,6 +11,7 @@ char c_path[2048] = "/";//结尾不加斜线！
 char p_path[2048] = "/";//结尾不加斜线！
 char r_path[2048];
 
+
 int process_path(char *temp_path)
 {
     if(temp_path == NULL)
@@ -55,7 +56,8 @@ void cd(char *path)
     process_path(path);
 
     inode *zero_inode = get_inode(0);
-    if(dirlookup(zero_inode, r_path, 0, 0) == NULL)
+    inode *temp_inode;
+    if((temp_inode = dirlookup(zero_inode, r_path, 0, 0, T_DIR)) == NULL || temp_inode->type != T_DIR)
     {
         printf("cd error: %s does not exist\n", r_path);
         return;
@@ -80,18 +82,24 @@ void ls(char *path)
     int offset = sizeof(dirent);
     dirent dir;
     bzero(&dir, sizeof(dir));
-    ip = dirlookup(ip, r_path, 0, 0);
+    ip = dirlookup(ip, r_path, 0, 0, T_DIR);
     if(ip == NULL)
     {
         printf("ls error: %s does not exist\n", path);
         return;
     }
+    printf("name\t\ttype\tsize\n");
     for(int i = 0; i < ip->size; i += offset)
     {
+        bzero(&dir, sizeof(dir));
+        char file_name[20];
+        bzero(file_name, sizeof(file_name));
         readi(ip, (uint64_t)&dir, i, offset);
+        strcpy(file_name, dir.name);
+        inode* chile_inode = dirlookup(ip, file_name, 0, 0, dir.type);
         if(strlen(dir.name) != 0)
         {
-            printf("%s\n", dir.name);
+            printf("%s\t%u\t%uB\n", dir.name, chile_inode->type,chile_inode->size);
         }
     }
 }
@@ -99,7 +107,7 @@ void mkdir(char *path)
 {
     process_path(path);
     inode *ip = get_inode(0);
-    ip = dirlookup(ip, r_path, 1, 0);
+    ip = dirlookup(ip, r_path, 1, 0, T_DIR);
     if(ip == NULL)
     {
         printf("mkdir error\n");
@@ -114,6 +122,18 @@ void rm(char *path)
     }
     process_path(path);
     remove_file(r_path);
+}
+void touch(char *path, char *buffer)
+{
+    inode *zero_inode = get_inode(0);
+    process_path(path);
+    inode *p_inode = dirlookup(zero_inode, r_path, 0, 1, T_DIR);
+    if(p_inode == NULL)
+    {
+        printf("touch error: %s does not exist\n", path);
+        return;
+    }
+    create_new_file(r_path, buffer);
 }
 void sysinfo()
 {

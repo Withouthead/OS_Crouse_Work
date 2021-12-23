@@ -14,6 +14,7 @@
 struct dirent
 {
     ushort inum;
+    char type;
     char name[DIRSIZE];
 };
 

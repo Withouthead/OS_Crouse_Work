@@ -134,14 +134,14 @@ int writei(inode *ip, uint64_t src, uint off, uint n)
         ip->size = off;
     return tot;
 }
-inode* dirlookup(inode *dp, char *name, int create_new=0, int parent=0)
+inode* dirlookup(inode *dp, char *name, int create_new=0, int parent=0, int type=-1)
 {
     assert(dp && dp->type == T_DIR);
     dirent de{};
     char name_back_up[2048];
     strcpy(name_back_up, name);
     char *p = strtok(name_back_up, "/");
-    inode *p_dp = NULL;
+    inode *p_dp = get_inode(0);
     while(p != NULL)
     {
         bzero(&de, sizeof(de));
@@ -150,21 +150,31 @@ inode* dirlookup(inode *dp, char *name, int create_new=0, int parent=0)
             readi(dp, (uint64_t)&de, i, sizeof(de));
             if(strcmp(de.name, p) == 0)
             {
+
+                inode* temp_inode = get_inode(de.inum);
+                if(type != -1 && temp_inode->type != type)
+                    continue;
                 p_dp = dp;
-                dp = get_inode(de.inum);
+                dp = temp_inode;
                 break;
             }
         }
-        if(strcmp(de.name, p) != 0)
+        if(strcmp(de.name, p) != 0 || (type != -1 && de.type != type))
         {
-            if(create_new == 0)
+            if(create_new == 0 || type != T_DIR)
+            {
+                if(parent)
+                    return p_dp;
                 return NULL;
+            }
+
             else
             {
                 inode *new_node = ialloc(T_DIR);
                 dirent new_de{};
                 strcpy(new_de.name, p);
                 new_de.inum = new_node->inum;
+                new_de.type = T_DIR;
                 writei(dp, (uint64_t)&new_de, dp->size, sizeof(new_de));
                 p_dp = dp;
                 dp = new_node;
@@ -230,10 +240,10 @@ int ifree(inode *node)
 
 void remove_file(char *name) {
     inode *zero_dp = get_inode(0);
-    inode *p_dp = dirlookup(zero_dp, name, 0, 1);
+    inode *p_dp = dirlookup(zero_dp, name, 0, 1, T_DIR);
     if (p_dp == NULL)
         return;
-    inode *ip = dirlookup(zero_dp, name, 0, 0);
+    inode *ip = dirlookup(zero_dp, name, 0, 0, -1);
     if (ip == NULL)
         return;
 
@@ -272,3 +282,46 @@ void remove_file(char *name) {
     ifree(ip);
 };
 
+inode *create_new_file(char *path, char *buffer)
+{
+    inode* zero_inode = get_inode(0);
+    inode *p_inode = dirlookup(zero_inode, path, 0, 1, T_DIR);
+    char file_name[2048];
+    char *r_char = strrchr(path, '/');
+    strcpy(file_name, r_char + 1);
+    if(p_inode == NULL)
+        return NULL;
+    dirent de;
+    bzero(&de, sizeof(de));
+
+    inode *file_inode = NULL;
+    for(int i = 0; i < p_inode->size; i += sizeof(de))
+    {
+        readi(p_inode, (uint64_t)&de, i, sizeof(de));
+        if(strcmp(de.name, file_name) == 0)
+        {
+            inode* temp_inode = get_inode(de.inum);
+            if(temp_inode->type != T_FILE)
+                continue;
+            file_inode = temp_inode;
+            break;
+        }
+    }
+    if(file_inode != NULL && file_inode->type == T_FILE)
+    {
+        ifree(file_inode);
+        file_inode = NULL;
+    }
+    if(file_inode == NULL || strcpy(de.name, file_name) != file_name || file_inode->type != T_FILE)
+    {
+        file_inode = ialloc(T_FILE);
+        dirent new_de{};
+        new_de.type = T_FILE;
+        strcpy(new_de.name, file_name);
+        new_de.inum = file_inode->inum;
+        writei(p_inode, (uint64_t)&new_de, p_inode->size, sizeof(new_de));
+        writei(file_inode, (uint64_t)buffer, 0, strlen(buffer));
+    }
+
+    return file_inode;
+}
